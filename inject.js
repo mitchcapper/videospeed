@@ -789,12 +789,12 @@ function initializeNow(document) {
   log("End initializeNow", 5);
 
   if ( window.location.hostname.endsWith("youtube.com") )
-    setTimeout(YTComAfterLoaded,1000);
+    setTimeout(YTComAfterLoaded,2000);
     //eval(tc.settings.ytJS);
 
 }
 function domItemByClass(classname){
-  var subButton = document.getElementsByClassName("ytp-subtitles-button ytp-button");
+  var subButton = document.getElementsByClassName(classname);
   return subButton.length < 1 ? null : subButton[0];
 }
 function YTComAfterLoaded(){
