@@ -167,6 +167,11 @@
         <em>Some sites force playback speed to 1.0 if we listened to that speed event our remembered speed would then be 1 as well.  If you manually set the speed through us to 1.0 though we will remember that.</em></label>
         <input id="ifSpeedIsNormalDontSaveUnlessWeSetIt" type="checkbox" />
       </div>
+      <div class="row">
+        <label for="neverAllowZeroSpeed">Never allow a speed of 0<br />
+        <em>If enabled, whenever a saved speed of 0 is read it will be reset to 1.0.</em></label>
+        <input id="neverAllowZeroSpeed" type="checkbox" />
+      </div>
 
       <div class="row">
         <label for="audioBoolean">Work on audio</label>

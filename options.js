@@ -2,7 +2,7 @@
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","videoSpeedEventAction","audioBoolean","startHidden","lastSpeed",
-"enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
+"enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","neverAllowZeroSpeed","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
  ///"ytJS" sadly cant figure out a good way to execute js https://bugs.chromium.org/p/chromium/issues/detail?id=1207006 may eventually have a solution
 var SettingFieldsBeforeSync = new Map();
 SettingFieldsBeforeSync.set("blacklist",(data) => data.replace(regStrip, ""));
@@ -24,6 +24,7 @@ var tcDefaults = {
   defaultLogLevel: 4, //for any command that doesn't specify a log level
   speeds: {}, // empty object to hold speed for each source
   ifSpeedIsNormalDontSaveUnlessWeSetIt: false,
+  neverAllowZeroSpeed: true, // default: false - when enabled, a saved speed of 0 is read back as 1.0
   ytAutoEnableClosedCaptions: false,
   ytAutoDisableAutoPlay: false,
   keyBindings: [
@@ -310,7 +311,7 @@ function save_options() {
 function GetStorage(keys) {
   if (window.browser?.storage?.sync?.get)
       return browser.storage.sync.get(keys);
-  
+
   return new Promise(resolve => chrome.storage.sync.get(keys, resolve));
 }
 

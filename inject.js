@@ -2,7 +2,7 @@
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 var regEndsWithFlags = /\/(?!.*(.).*\1)[gimsuy]*$/;
 var SettingFieldsSynced = ["keyBindings","version","displayKeyCode","rememberSpeed","videoSpeedEventAction","audioBoolean","startHidden","lastSpeed",
-"enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
+"enabled","controllerOpacity","logLevel","blacklist","ifSpeedIsNormalDontSaveUnlessWeSetIt","neverAllowZeroSpeed","ytAutoEnableClosedCaptions","ytAutoDisableAutoPlay"];
  ///"ytJS" sadly cant figure out a good way to execute js https://bugs.chromium.org/p/chromium/issues/detail?id=1207006 may eventually have a solution
 var SettingFieldsBeforeSync = new Map();
 SettingFieldsBeforeSync.set("blacklist",(data) => data.replace(regStrip, ""));
@@ -24,6 +24,7 @@ var tcDefaults = {
   defaultLogLevel: 4, //for any command that doesn't specify a log level
   speeds: {}, // empty object to hold speed for each source
   ifSpeedIsNormalDontSaveUnlessWeSetIt: false,
+  neverAllowZeroSpeed: true,
   ytAutoEnableClosedCaptions: false,
   ytAutoDisableAutoPlay: false,
   keyBindings: [
@@ -94,7 +95,7 @@ function log(message, level, instId=null) {
 function GetStorage(keys) {
   if (window.browser?.storage?.sync?.get)
       return browser.storage.sync.get(keys);
-  
+
   return new Promise(resolve => chrome.storage.sync.get(keys, resolve));
 }
 async function Start(){
@@ -213,6 +214,10 @@ function defineVideoController() {
       storedSpeed = tc.settings.lastSpeed;
       log(`Recalled stored speed due to rememberSpeed being enabled: ${storedSpeed}`, 5, this.INST_ID);
     }
+    if (tc.settings.neverAllowZeroSpeed && storedSpeed == 0) {
+      log("Saved speed was 0; using 1.0 (neverAllowZeroSpeed enabled)", 4, this.INST_ID);
+      storedSpeed = 1.0;
+    }
 
     log("Explicitly setting playbackRate to: " + storedSpeed, 5, this.INST_ID);
     target.playbackRate = storedSpeed;
@@ -236,6 +241,10 @@ function defineVideoController() {
         // );
         log("Recalling stored speed due to rememberSpeed being enabled_", 5, this.INST_ID);
         storedSpeed = tc.settings.lastSpeed;
+      }
+      if (tc.settings.neverAllowZeroSpeed && storedSpeed == 0) {
+        log("Saved speed was 0; using 1.0 (neverAllowZeroSpeed enabled)", 4, this.INST_ID);
+        storedSpeed = 1.0;
       }
       // TODO: Check if explicitly setting the playback rate to 1.0 is
       // necessary when rememberSpeed is disabled (this may accidentally
@@ -482,9 +491,9 @@ function setupListener() {
 
     log("Updating controller with new speed", 5, video.vsc.INST_ID);
     speedIndicator.textContent = speed.toFixed(2);
-    tc.settings.speeds[src] = speed;
+    if (shouldStoreSpeed(speed)) tc.settings.speeds[src] = speed;
     let wasUs = event.detail && event.detail.origin === "videoSpeed";
-    if (wasUs || ! tc.settings.ifSpeedIsNormalDontSaveUnlessWeSetIt || speed != 1) {
+    if ((wasUs || ! tc.settings.ifSpeedIsNormalDontSaveUnlessWeSetIt || speed != 1) && shouldStoreSpeed(speed)) {
 
       log("Storing lastSpeed in settings for the rememberSpeed feature", 5, video.vsc.INST_ID);
       tc.settings.lastSpeed = speed;
@@ -667,7 +676,7 @@ function initializeNow(document) {
     // Only proceed with supposed removal if node is missing from DOM
     if (!added && document.body?.contains(node)) {
       // This was written prior to the addition of shadowRoot processing.
-      // TODO: Determine if shadowRoot deleted nodes need this sort of 
+      // TODO: Determine if shadowRoot deleted nodes need this sort of
       // check as well.
       return;
     }
@@ -796,6 +805,14 @@ function YTComAfterLoaded(){
       subButton.click();
   }
 }
+// Returns whether a speed should be persisted; when neverAllowZeroSpeed is enabled a 0 is skipped (not overwritten) to preserve the last preferred speed.
+function shouldStoreSpeed(speed) {
+  if (tc.settings.neverAllowZeroSpeed && speed == 0) {
+    log("Skipping store of speed 0 (neverAllowZeroSpeed enabled); preserving last preferred speed", 4);
+    return false;
+  }
+  return true;
+}
 function setSpeed(video, speed) {
   log("setSpeed started: " + speed, 5);
   var speedvalue = speed.toFixed(2);
@@ -813,7 +830,7 @@ function setSpeed(video, speed) {
   }
   var speedIndicator = video.vsc.speedIndicator;
   speedIndicator.textContent = speedvalue;
-  tc.settings.lastSpeed = speed;
+  if (shouldStoreSpeed(speed)) tc.settings.lastSpeed = speed;
   refreshCoolDown();
   log("setSpeed finished: " + speed, 5);
 }
